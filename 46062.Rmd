@@ -108,9 +108,9 @@ knitr::kable(
 # print(real_stats)
 ```
 
-Among the three relationship networks, the coworker network is the most tightly knit with a density of 0.222, meaning that 22% of all possible coworker ties are realized. It also has the shortest average path length, which means that nearly everyone is just one colleague or at most, two colleagues away, making it the easiest network in which to connect across the firm.
+Among the three relationship networks, the coworker network is the most tightly knit, with a density of 0.222, meaning that 22% of all possible coworker ties are realised. This network also has the shortest average path length, meaning that nearly everyone is connected by just one or, at most, two colleagues, making it the easiest network through which to connect across the firm.
 
-The configuration model was chosen as the baseline because it preserves each lawyer’s degree i.e., it retains how many ties each node has while randomizing who they connect to. This ensures that any differences we observe between the real networks and their randomized counterparts arise from higher-order structures such as reciprocity, transitivity, average path length, and community organization, rather than from simple degree variation.
+The configuration model was chosen as the baseline because it preserves each lawyer’s degree which means it retains how many ties each node has while randomizing who they connect to. This ensures that any differences we observe between the real networks and their randomised counterparts arise from higher-order structures such as reciprocity, transitivity, average path length, and overall community organisation, rather than from simple variations in degree.
 
 ```{r configuration-network-stats}
 ## Part 2: Compare each empirical network to its randomized baseline
@@ -147,6 +147,17 @@ rand_stats_list <- lapply(
 
 rand_stats <- bind_rows(rand_stats_list)
 
+# Check isolates in each layer
+nets <- list(Advice = g_adv, CoWork = g_cow, Friend = g_frnd)
+
+isolate_stats <- sapply(nets, function(g) {
+  iso <- V(g)[igraph::degree(g, mode = "all") == 0]$name
+  list(n_isolates = length(iso),
+       isolates    = if (length(iso)) iso else NA)
+})
+
+# print(isolate_stats)
+
 # Merge empirical vs. random means, round, and print
 comparison <- real_stats %>%
   left_join(rand_stats, by = "Network") %>%
@@ -162,12 +173,13 @@ comparison <- real_stats %>%
 # Split into two
 table1 <- comparison %>%
   select(Network,
-         density,      density_mean,
-         avg_path_len, avg_path_len_mean)
+         density, density_mean,
+         reciprocity, reciprocity_mean,
+         )
 
 table2 <- comparison %>%
   select(Network,
-         reciprocity,   reciprocity_mean,
+         avg_path_len, avg_path_len_mean,
          transitivity,  transitivity_mean)
 
 # Print first half
@@ -183,7 +195,11 @@ knitr::kable(
   )
 
 cat("\n\n")  # small vertical space between tables
+```
 
+For that reason, network density remains identical between the empirical networks and their corresponding configuration models across all three cases. In contrast, measures such as average path length, reciprocity, and transitivity, which capture higher-order structural properties, show divergence, highlights patterns that cannot be explained by degree alone and suggests meaningful network structure beyond random chance. In the coworker network, reciprocity jumps from 20% in the random graphs to 68% in the empirical network, showing that formal working relationships are far more mutually acknowledged than random wiring would produce. A similar jump occurs in the friendship layer which also indicates overwhelmingly mutual nature of such ties. Reciprocity in the advice network shows a jump as well but is closer to the baseline, suggesting that hierarchical norms and expertise may impact two-way acknowledgment.
+
+```{r}
 # Print second half
 knitr::kable(
   table2,
@@ -195,22 +211,11 @@ knitr::kable(
     latex_options = c("hold_position", "scale_down"),
     full_width    = FALSE
   )
-
-# print(comparison)
-
-# Check isolates in each layer
-nets <- list(Advice = g_adv, CoWork = g_cow, Friend = g_frnd)
-
-isolate_stats <- sapply(nets, function(g) {
-  iso <- V(g)[igraph::degree(g, mode = "all") == 0]$name
-  list(n_isolates = length(iso),
-       isolates    = if (length(iso)) iso else NA)
-})
-
-# print(isolate_stats)
 ```
 
-Accordingly, density remains identical across all three networks—advice, coworker, and friendship—since it depends solely on node degrees. In contrast, average path length, reciprocity and transitivity that probe beyond individual ties reveal striking departures from chance. In the coworker network, reciprocity jumps from 20% in the random graphs to 60% in the real network, showing that formal working relationships are far more mutually acknowledged than random wiring would produce. Similar jumps occur in the advice and friendship layers where ties are overwhelmingly mutual. Reciprocity in the advice network is closer to the baseline, suggesting that hierarchical norms may impact two-way acknowledgment. The advice network’s average path length of 2.24 hops versus 2.12 at random indicates that questions funnel through a small number of trusted experts rather than diffusing evenly. The friendship network spans 2.51 friend of a friend steps on average, compared with 2.29 in the random model. This reflects tight social cliques and pronounced triadic closure, which is the tendency for two people who share a mutual friend to also become friends themselves, perfectly illustrating Granovetter’s insight that a friend of a friend is likely a friend (1973). By contrast, the coworker network’s path length remains essentially unchanged—1.88 versus 1.89 steps—demonstrating that formal work ties knit the firm together as efficiently as mathematically possible. These patterns are consistent with homophily theory (McPherson, Smith-Lovin and Cook, 2001). This theory predicts that similarity in attributes, whether it is office location, practice area, or status, drives the formation and reinforcement of ties through triadic closure and mutual acknowledgment well beyond what degree alone would produce.
+All three networks have average path lengths that are fairly similar to those of their corresponding configuration models, suggesting that global connectivity is largely informed by the degree distribution. However, the Advice and Friendship networks are slightly less efficient in terms of connectivity, with marginally longer average path lengths than their randomised counterparts. This could indicate the presence of structural features such as clustering or selective ties that limit the reach of these networks. In contrast, the Coworker network shows virtually no difference, with an average path length of 1.88 compared to 1.89 in the configuration model. This suggests that formal work relationships connect the firm as efficiently as possible, given how many ties each person has.
+
+Across all networks, empirical transitivity is consistently higher than in the configuration models. This points to a greater-than-random presence of triadic closure, where individuals are more likely to be connected to their colleagues' connections (Granovetter, 1973). The pattern is particularly strong in the Advice network, where transitivity is 0.479 compared to 0.348 in the configuration model. This suggests a network structure shaped by trust and professional familiarity which  are commonly observed in advice-seeking networks (Zagenczyk et al, 2009).
 
 2. Assortativity and Community Detection
 ```{r assortativity}
@@ -304,7 +309,7 @@ knitr::kable(
 
 Infomap identified a single community, which offered no meaningful partitioning. Both Louvain and Leiden produced the same three communities, but Leiden was chosen for the final model because its two-phase refinement process guarantees that each community is internally well connected and continually maximizes modularity at every level of the hierarchy. In addition, Leiden’s ability to operate against the same configuration model used earlier ensures that the communities it uncovers reflect genuine higher order structure. 
 
-```{r advice-ERGM}
+```{r advice-leiden}
 # Collapse directed g_agg into undirected and sum weights
 # 1. Collapse and run Leiden once
 g_und <- as.undirected(
@@ -567,7 +572,7 @@ knitr::kable(
 
 In the fitted ERGM for the lawyers’ advice network, six significant predictors emerge. First, age has an odds ratio of 0.979 (95 percent CI 0.972–0.987), meaning each additional year of age reduces a lawyer’s likelihood of seeking advice by about 2 percent. Second, partner status strongly increases one’s visibility as an advice source, with an incoming‐tie odds ratio of 4.624 (CI 3.78–5.66), so partners are roughly 4.6 times more likely than associates to be asked for guidance. Partners also ask for advice more often themselves, with an outgoing‐tie odds ratio of 1.351 (CI 1.12–1.64), reflecting a 35 percent higher propensity to initiate queries. Third, gender homophily carries an odds ratio of 1.515 (CI 1.27–1.81), indicating that same‐gender pairs are about 50 percent more likely to exchange advice than mixed‐gender pairs. Fourth, office homophily is the strongest predictor, with an odds ratio of 5.419 (CI 4.50–6.52), so sharing an office makes advice ties over five times more likely. Finally, practice‐area homophily yields an odds ratio of 4.160 (CI 3.49–4.96), meaning colleagues in the same specialty are just over four times as likely to consult one another. Collectively, these terms show that proximity and shared professional context dominate advice‐giving, while demographic and hierarchical factors play secondary yet meaningful roles.
 
-```{r advice-ERGM-gof}
+```{r ERGM-gof}
 #### 6. Goodness‐of‐Fit ####
 gof_adv <- gof(
   model_adv,
@@ -621,3 +626,8 @@ The geographic division between Massachusetts offices and the Connecticut branch
 
 Future models could include interaction effects—such as office × status or age × practice—to test whether partners in the same office or senior lawyers in certain specialties are disproportionately likely to connect. ommunity detecition showed that providence and boston office overlap in communities. Further ERGM work on absolute office‐distance effects could quantify how physical separation dampens advice flows across Boston, Providence, and Hartford.
 
+References
+
+Granovetter, M. S. (1973). The Strength of Weak Ties. American Journal of Sociology, 78(6), 1360–1380. http://www.jstor.org/stable/2776392
+
+Zagenczyk, Thomas & Murrell, Audrey. (2009). It is Better to Receive than to Give: Advice Network Effects on Job and Work-Unit Attachment. Journal of Business and Psychology. 24. 139-152. 10.1007/s10869-009-9095-3. 
