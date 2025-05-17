@@ -1,0 +1,623 @@
+---
+title: "A Study of Social Network Patterns Among Lawyers"
+author: '46062'
+date: "`r Sys.Date()`"
+output: 
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE,
+  results = 'asis')
+```
+
+```{r pacakges, include=FALSE}
+library(igraph)
+library(dplyr)
+library(knitr)
+library(tidyr)
+library(ggraph)
+library(ggplot2)
+library(sna)
+library(network)
+library(kableExtra)
+library(ergm)
+```
+
+```{r aggregate-network, echo=FALSE, warning=FALSE, message=FALSE, results='asis'}
+law_adv <- read.csv("Law_Advice.csv", header = TRUE, as.is = TRUE)
+law_frnd <- read.csv("Law_Friendship.csv", header = TRUE, as.is = TRUE)
+law_cow <- read.csv("Law_CoWork.csv", header = TRUE, as.is = TRUE)
+law_att <- read.csv("Law_NodeAtt.csv", header = TRUE, as.is = TRUE)
+
+# Standardising column names of edge lists for igraph
+colnames(law_adv)  <- c("from", "to")
+colnames(law_cow)  <- c("from", "to")
+colnames(law_frnd) <- c("from", "to")
+
+# Create each layer as a directed igraph, attaching vertex attributes from law_att
+# Advice network
+g_adv <- graph_from_data_frame(d = law_adv, directed = TRUE, vertices = law_att)
+# Co‐work network
+g_cow <- graph_from_data_frame(d = law_cow,directed = TRUE, vertices = law_att)
+# Friendship network
+g_frnd <- graph_from_data_frame(d = law_frnd, directed = TRUE, vertices = law_att)
+
+# # Quick sanity checks
+# summary(g_adv)
+# summary(g_cow)
+# summary(g_frnd)
+
+# Build the aggregated network
+# Tag each edge‐list
+adv_tagged  <- mutate(law_adv,  layer = "Advice")
+cow_tagged  <- mutate(law_cow,  layer = "CoWork")
+frnd_tagged <- mutate(law_frnd, layer = "Friend")
+
+# Combine and count occurrences
+all_edges <- bind_rows(adv_tagged, cow_tagged, frnd_tagged)
+
+agg_edges <- all_edges %>%
+  group_by(from, to) %>%
+  summarize(weight = n(),      # number of layers in which the tie appears
+            layers = paste(sort(unique(layer)), collapse = ";")) %>%
+  ungroup()
+
+# Now make the aggregated graph
+g_agg <- graph_from_data_frame(d = agg_edges, directed = TRUE, vertices = law_att)
+
+# # Check the new edge attributes
+# E(g_agg)$weight # 1–3, depending on how many layers
+# E(g_agg)$layers # e.g. "Advice", "Friend", "Cowork"
+```
+
+1. Empirical network vs Configuration Model network
+```{r emperical-network-stats, echo=FALSE, warning=FALSE, message=FALSE, results='asis'}
+## Part 1: Compare Advice, CoWork, Friend networks directly
+# Metric function
+compute_metrics <- function(g) {
+  tibble(
+    density      = graph.density(g),
+    avg_path_len = mean_distance(g, directed = TRUE, unconnected = TRUE),
+    reciprocity  = reciprocity(g),
+    transitivity = transitivity(g, type = "global")
+  )
+}
+
+# Gather into one table
+real_stats <- bind_rows(
+  compute_metrics(g_adv)  %>% mutate(Network = "Advice"),
+  compute_metrics(g_cow)  %>% mutate(Network = "CoWork"),
+  compute_metrics(g_frnd) %>% mutate(Network = "Friend")
+) %>%
+  select(Network, everything()) %>%
+  mutate(across(where(is.numeric), ~ round(.x, 3)))
+
+# Print comparison as a nice table
+knitr::kable(
+  real_stats,
+  caption = "Metrics for Advice, CoWork, and Friend Networks",
+  align   = "lcccc"
+)
+
+# Also print the raw tibble
+# print(real_stats)
+```
+
+Among the three relationship networks, the coworker network is the most tightly knit with a density of 0.222, meaning that 22% of all possible coworker ties are realized. It also has the shortest average path length, which means that nearly everyone is just one colleague or at most, two colleagues away, making it the easiest network in which to connect across the firm.
+
+The configuration model was chosen as the baseline because it preserves each lawyer’s degree i.e., it retains how many ties each node has while randomizing who they connect to. This ensures that any differences we observe between the real networks and their randomized counterparts arise from higher-order structures such as reciprocity, transitivity, average path length, and community organization, rather than from simple degree variation.
+
+```{r configuration-network-stats}
+## Part 2: Compare each empirical network to its randomized baseline
+set.seed(42)
+R <- 100
+
+# Simulate configuration‐model replicates and compute means
+rand_stats_list <- lapply(
+  c("Advice", "CoWork", "Friend"),
+  function(net) {
+    g_orig  <- switch(net,
+                      Advice = g_adv,
+                      CoWork = g_cow,
+                      Friend = g_frnd)
+    out_deg <- igraph::degree(g_orig, mode = "out")
+    in_deg  <- igraph::degree(g_orig, mode = "in")
+    
+    sims <- replicate(R, {
+      g_r <- sample_degseq(out_deg, in_deg, method = "configuration")
+      compute_metrics(g_r)
+    }, simplify = FALSE)
+    
+    bind_rows(sims) %>%
+      summarise(
+        across(
+          .cols  = everything(),
+          .fns   = mean,
+          .names = "{.col}_mean"
+        )
+      ) %>%
+      mutate(Network = net)
+  }
+)
+
+rand_stats <- bind_rows(rand_stats_list)
+
+# Merge empirical vs. random means, round, and print
+comparison <- real_stats %>%
+  left_join(rand_stats, by = "Network") %>%
+  select(
+    Network,
+    density,      density_mean,
+    avg_path_len, avg_path_len_mean,
+    reciprocity,  reciprocity_mean,
+    transitivity, transitivity_mean
+  ) %>%
+  mutate(across(where(is.numeric), ~ round(.x, 3)))
+
+# Split into two
+table1 <- comparison %>%
+  select(Network,
+         density,      density_mean,
+         avg_path_len, avg_path_len_mean)
+
+table2 <- comparison %>%
+  select(Network,
+         reciprocity,   reciprocity_mean,
+         transitivity,  transitivity_mean)
+
+# Print first half
+knitr::kable(
+  table1,
+  caption   = "Empirical vs Config‐Model Means: Density  \\& Path Length",
+  align     = "lcccc",
+  booktabs  = TRUE
+) %>%
+  kable_styling(
+    latex_options = c("hold_position", "scale_down"),
+    full_width    = FALSE
+  )
+
+cat("\n\n")  # small vertical space between tables
+
+# Print second half
+knitr::kable(
+  table2,
+  caption   = "Empirical vs Config‐Model Means: Reciprocity \\& Transitivity",
+  align     = "lcccc",
+  booktabs  = TRUE
+) %>%
+  kable_styling(
+    latex_options = c("hold_position", "scale_down"),
+    full_width    = FALSE
+  )
+
+# print(comparison)
+
+# Check isolates in each layer
+nets <- list(Advice = g_adv, CoWork = g_cow, Friend = g_frnd)
+
+isolate_stats <- sapply(nets, function(g) {
+  iso <- V(g)[igraph::degree(g, mode = "all") == 0]$name
+  list(n_isolates = length(iso),
+       isolates    = if (length(iso)) iso else NA)
+})
+
+# print(isolate_stats)
+```
+
+Accordingly, density remains identical across all three networks—advice, coworker, and friendship—since it depends solely on node degrees. In contrast, average path length, reciprocity and transitivity that probe beyond individual ties reveal striking departures from chance. In the coworker network, reciprocity jumps from 20% in the random graphs to 60% in the real network, showing that formal working relationships are far more mutually acknowledged than random wiring would produce. Similar jumps occur in the advice and friendship layers where ties are overwhelmingly mutual. Reciprocity in the advice network is closer to the baseline, suggesting that hierarchical norms may impact two-way acknowledgment. The advice network’s average path length of 2.24 hops versus 2.12 at random indicates that questions funnel through a small number of trusted experts rather than diffusing evenly. The friendship network spans 2.51 friend of a friend steps on average, compared with 2.29 in the random model. This reflects tight social cliques and pronounced triadic closure, which is the tendency for two people who share a mutual friend to also become friends themselves, perfectly illustrating Granovetter’s insight that a friend of a friend is likely a friend (1973). By contrast, the coworker network’s path length remains essentially unchanged—1.88 versus 1.89 steps—demonstrating that formal work ties knit the firm together as efficiently as mathematically possible. These patterns are consistent with homophily theory (McPherson, Smith-Lovin and Cook, 2001). This theory predicts that similarity in attributes, whether it is office location, practice area, or status, drives the formation and reinforcement of ties through triadic closure and mutual acknowledgment well beyond what degree alone would produce.
+
+2. Assortativity and Community Detection
+```{r assortativity}
+# Compute assortativity in each layer
+get_assorts <- function(g, net_name) {
+  tibble(
+    Network         = net_name,
+    `Gender Assort.` = assortativity_nominal(g, types  = V(g)$Gender, directed = TRUE),
+    `Age Assort.`    = assortativity(        g, values = V(g)$Age,    directed = TRUE),
+    `Status Assort.` = assortativity_nominal(g, types  = V(g)$Status, directed = TRUE)
+  )
+}
+
+assort_df <- bind_rows(
+  get_assorts(g_adv,  "Advice"),
+  get_assorts(g_cow,  "CoWork"),
+  get_assorts(g_frnd, "Friend")
+) %>%
+  mutate(across(where(is.numeric), ~ round(.x, 3)))
+
+knitr::kable(
+  assort_df,
+  align   = "lccc",
+  caption = "Assortativity by Network and Attribute"
+)
+
+# assort_df
+```
+
+In the advice network, gender assortativity is low at 0.087, indicating only a slight tendency for lawyers to seek and give advice within the same gender, while in the coworker network it is in the negative (−0.021), showing no meaningful gender preference in formal collaborations. By contrast, friendship ties display a moderate gender homophily of 0.206, meaning lawyers are more likely to form social connections with colleagues of the same gender. Age assortativity follows a similar pattern. In the advice network it is 0.237, demonstrating only a moderate preference for advice exchanges within age cohorts, whereas the coworker network’s coefficient of −0.045 indicates essentially no age‐based preference reflecting that formal work ties mix juniors and seniors quite freely. By contrast, the friendship network’s high assortativity of 0.446 shows that social bonds cluster strongly among similarly aged lawyers. Finally, status assortativity is 0.320 in the advice network which indicates that partners and associates tend to seek guidance from peers at the same rank more than chance. Assortativity in the coworker network is slightly negative at −0.100, reflecting that formal work ties bridge status levels a bit more than random, so associates’ partners routinely collaborate. In the friendship network the strong positive value of 0.552 demonstrates that friendships are overwhelmingly formed within the same status level rather than across tiers.
+
+```{r leiden-community-detection}
+# Community detection: Louvain & Leiden on undirected collapse, Infomap on directed g_agg
+
+# Run Infomap on the directed graph (boosted sensitivity with multiple trials)
+infomap_comm <- cluster_infomap(
+  g_agg,
+  e.weights = E(g_agg)$weight,
+  nb.trials = 30
+)
+
+# Collapsed directed → undirected for Louvain & Leiden
+g_und <- as.undirected(
+  g_agg,
+  mode           = "collapse",
+  edge.attr.comb = list(weight = "sum")
+)
+
+# Run Louvain on the undirected graph
+louvain_comm <- cluster_louvain(
+  g_und,
+  weights = E(g_und)$weight
+)
+
+# Run Leiden on the undirected graph (modularity objective)
+leiden_comm <- cluster_leiden(
+  g_und,
+  weights             = E(g_und)$weight,
+  objective_function  = "modularity",
+  resolution_parameter = 1.0
+)
+
+# Extract membership vectors
+infomap_mem <- membership(infomap_comm)
+louvain_mem <- membership(louvain_comm)
+leiden_mem  <- membership(leiden_comm)
+
+# Build a combined data.frame of method vs. community
+comm_df <- data.frame(
+  Infomap = infomap_mem,
+  Louvain = louvain_mem,
+  Leiden  = leiden_mem,
+  stringsAsFactors = FALSE
+)
+
+# Combined Method × Community contingency table
+long <- comm_df %>%
+  pivot_longer(
+    cols      = everything(),
+    names_to  = "Method",
+    values_to = "Community"
+  )
+
+combined_ct <- table(long$Method, long$Community)
+
+knitr::kable(
+  combined_ct,
+  caption = "Method vs Community"
+)
+```
+
+Infomap identified a single community, which offered no meaningful partitioning. Both Louvain and Leiden produced the same three communities, but Leiden was chosen for the final model because its two-phase refinement process guarantees that each community is internally well connected and continually maximizes modularity at every level of the hierarchy. In addition, Leiden’s ability to operate against the same configuration model used earlier ensures that the communities it uncovers reflect genuine higher order structure. 
+
+```{r advice-ERGM}
+# Collapse directed g_agg into undirected and sum weights
+# 1. Collapse and run Leiden once
+g_und <- as.undirected(
+  g_agg, mode="collapse",
+  edge.attr.comb=list(weight="sum")
+)
+if ("layers" %in% edge_attr_names(g_und)) {
+  g_und <- delete_edge_attr(g_und, "layers")
+}
+leiden_comm <- cluster_leiden(
+  g_und,
+  weights=E(g_und)$weight,
+  objective_function="modularity"
+)
+V(g_und)$leiden_f <- factor(
+  membership(leiden_comm),
+  labels = paste0("Comm", sort(unique(membership(leiden_comm))))
+)
+
+# 2. Make factor versions of your attributes
+#    (only if you haven't already)
+V(g_und)$Office_f   <- factor(V(g_und)$Office,
+                               levels = c(1,2,3),
+                               labels = c("Boston","Hartford","Providence"))
+V(g_und)$Practice_f <- factor(V(g_und)$Practice,
+                               levels = c(1,2),
+                               labels = c("Litigation","Corporate"))
+V(g_und)$Status_f   <- factor(V(g_und)$Status,
+                               levels = c(1,2),
+                               labels = c("Partner","Associate"))
+
+set.seed(42)
+layout <- create_layout(g_und, layout="fr")
+
+plot_leiden_attr <- function(shape_attr, shape_vals, shape_breaks, shape_title) {
+  ggraph(layout) +
+    geom_edge_link(aes(width = weight), colour="grey80", alpha=0.2) +
+    geom_node_point(aes(
+      color = leiden_f,
+      shape = .data[[shape_attr]]
+    ), size = 4) +
+    geom_node_text(aes(label = name),
+                   family = "serif", size = 2.5, repel = TRUE) +
+    scale_color_brewer("Community", palette="Set1",
+                       guide = guide_legend(order=1, override.aes=list(size=6))) +
+    scale_shape_manual(shape_title,
+                       values = shape_vals,
+                       breaks = shape_breaks,
+                       guide  = guide_legend(order=2, override.aes=list(size=6))) +
+    theme_void(base_family = "serif") +
+    theme(
+      legend.position = "right",
+      legend.title    = element_text(size = 12),
+      legend.text     = element_text(size = 10)
+    )
+}
+```
+
+```{r leiden_ground_truth, echo=FALSE, message=FALSE, warning=FALSE}
+# 1. Attach Leiden community membership to the graph
+V(g_und)$Leiden <- membership(leiden_comm)
+
+# 2. Create a data frame with node-level info
+comm_truth <- tibble(
+  node      = V(g_und)$name,
+  Community = V(g_und)$Leiden,
+  Office    = V(g_und)$Office,
+  Practice  = V(g_und)$Practice,
+  Status    = V(g_und)$Status
+)
+
+# 3. Create contingency tables for each attribute
+tab_office   <- table(comm_truth$Community, comm_truth$Office)
+tab_practice <- table(comm_truth$Community, comm_truth$Practice)
+tab_status   <- table(comm_truth$Community, comm_truth$Status)
+
+# 4. Convert contingency tables to data.frames
+df_office   <- as.data.frame.matrix(tab_office)
+df_practice <- as.data.frame.matrix(tab_practice)
+df_status   <- as.data.frame.matrix(tab_status)
+
+# 5. Add suffix to column names to keep them distinct
+colnames(df_office)   <- paste0("Office_", colnames(df_office))
+colnames(df_practice) <- paste0("Practice_", colnames(df_practice))
+colnames(df_status)   <- paste0("Status_", colnames(df_status))
+
+# 6. Combine into one wide table (Community is the rownames)
+df_combined <- cbind(df_office, df_practice, df_status)
+
+# 7. Display the combined contingency table
+kable(
+  df_combined,
+  caption = "Contingency Tables: Leiden Community vs Office, Practice, and Status",
+  align   = "c",
+  booktabs = TRUE
+) %>%
+  kable_styling(latex_options = "scale_down")
+
+# 8. Compute purity (max % of dominant class per attribute in each community)
+purity <- comm_truth %>%
+  group_by(Community) %>%
+  summarize(
+    office_purity   = max(prop.table(table(Office)))   %>% round(2),
+    practice_purity = max(prop.table(table(Practice))) %>% round(2),
+    status_purity   = max(prop.table(table(Status)))   %>% round(2)
+  )
+
+# 9. Display purity table
+kable(
+  purity,
+  caption = "Leiden Community Purity by Attribute (max proportion within each)",
+  align   = "c",
+  booktabs = TRUE
+)
+```
+
+```{r plot_office, fig.width=6, fig.height=4, fig.align='center', out.width='60%', dev='pdf', fig.cap="Leiden Communities \\& Office"}
+plot_leiden_attr(
+  shape_attr    = "Office_f",
+  shape_vals    = c(Boston = 16, Hartford = 17, Providence = 15),
+  shape_breaks  = c("Boston","Hartford","Providence"),
+  shape_title   = "Office"
+)
+```
+
+Geographically, lawyers in Boston divide evenly into communities one and two, while Hartford lawyers form their own relatively separate community three. Providence lawyers appear exclusively in community two, joining Boston’s corporate specialists rather than Hartford’s cluster. 
+
+```{r plot_practice, fig.width=6, fig.height=4, fig.align='center', out.width='60%', dev='pdf', fig.cap="Leiden Communities \\& Practice"}
+plot_leiden_attr(
+  shape_attr    = "Practice_f",
+  shape_vals    = c(Litigation = 16, Corporate = 17),
+  shape_breaks  = c("Litigation","Corporate"),
+  shape_title   = "Practice"
+)
+```
+
+In the Communities and Practice plot, community one is dominated by litigation practitioners and community two by corporate lawyers, suggesting that these two groups interact almost exclusively within their own practice area. By contrast, community three lawyers from Hartford collaborate mostly among themselves. This may reflect Hartford’s greater distance from Providence and Boston, making intercity ties less frequent. The density of grey weighted edges between communities one and two, aggregated from coworking, advice-seeking, and friendships, underscores the close bonds among Massachusetts lawyers.
+
+```{r plot_status, fig.width=6, fig.height=4, fig.align='center', out.width='60%', dev='pdf', fig.cap="Leiden Communities \\& Status"}
+plot_leiden_attr(
+  shape_attr    = "Status_f",
+  shape_vals    = c(Partner = 16, Associate = 17),
+  shape_breaks  = c("Partner","Associate"),
+  shape_title   = "Status"
+)
+```
+
+All three communities contain a mix of partners and associates, illustrating the hierarchical nature of the profession: associates work with and seek advice from partners while forming friendships at similar status levels. This pattern aligns with homophily theory, which predicts that similarity in attributes such as status fosters tie formation and mutual acknowledgment.
+
+These results show that lawyers’ day-to-day collaborations are driven purely by work needs—coworker ties ignore gender, age, and status—whereas the exchange of expertise and the formation of social bonds are tightly governed by similarity and proximity. When seeking advice, lawyers prefer peers of the same rank and similar age, funnelling questions through established experts rather than casting a wide net. Friendships are even more exclusive: colleagues almost always befriend others of the same gender, age cohort, and status, and geographic distance (as in Hartford versus Boston and Providence) further entrenches social cliques. In short, professional efficiency overrides demographic differences in formal work, but affinity and hierarchy dominate who you turn to for advice and who you count as a friend.
+
+3. ERGM and Goodness of Fit
+```{r advice-ERGM}
+# Read data & build igraph Advice network
+law_adv <- read.csv("Law_Advice.csv",  header = TRUE, as.is = TRUE)
+law_att <- read.csv("Law_NodeAtt.csv", header = TRUE, as.is = TRUE)
+colnames(law_adv) <- c("from", "to")
+
+g_adv <- graph_from_data_frame(
+  law_adv,
+  directed = TRUE,
+  vertices = law_att
+)
+
+# Convert to network::network & recode attrs
+# To adjacency matrix → network object (grabs raw numeric attrs)
+amat <- as.matrix(as_adjacency_matrix(g_adv, sparse = FALSE))
+g_net <- network(
+  amat,
+  directed    = TRUE,
+  loops       = FALSE,
+  vertex.attr = vertex.attributes(g_adv)
+)
+
+# Pull out the original igraph vertex attributes
+v <- vertex.attributes(g_adv)
+
+# Recode categoricals as character so network accepts them
+g_net %v% "Status"   <- as.character(factor(v$Status,
+                                            levels = c(1, 2),
+                                            labels = c("Partner","Associate")))
+g_net %v% "Gender"   <- as.character(factor(v$Gender,
+                                            levels = c(1, 2),
+                                            labels = c("Male","Female")))
+g_net %v% "Office"   <- as.character(factor(v$Office,
+                                            levels = c(1, 2, 3),
+                                            labels = c("Boston","Hartford","Providence")))
+g_net %v% "Practice" <- as.character(factor(v$Practice,
+                                            levels = c(1, 2),
+                                            labels = c("Litigation","Corporate")))
+# Leave Age numeric
+g_net %v% "Age"      <- v$Age
+
+# Fit the ERGM
+model_adv <- ergm(
+  g_net ~
+    edges +
+    nodecov("Age") +               # a) Age (overall activity) 
+    nodeifactor("Status") +        # b) Status on incoming ties # if a person is a partner then what is likelihood of them being nominated as someone that other's seek out for advice. 
+    nodeofactor("Status") +        # c) Status on outgoing ties # if a person is a partner then what is the likelihood of them nominating someone from who they would seeking advice. 
+    nodematch("Gender") +          # d) Gender homophily
+    nodematch("Office") +          # e) Office homophily
+    nodematch("Practice"),         # f) Practice homophily
+  control = control.ergm(MCMLE.maxit = 20)
+)
+
+# Extract & relabel results
+s   <- summary(model_adv)
+cf  <- s$coefficients
+od  <- exp(cf[, "Estimate"])
+
+res <- tibble(
+  raw = rownames(cf),
+  Estimate  = cf[, "Estimate"],
+  Std.Error = cf[, "Std. Error"],
+  p.value   = cf[, "Pr(>|z|)"],
+  Odds.Ratio= od
+) %>%
+  mutate(
+    Term = recode(raw,
+      nodecov.Age             = "Age (overall activity)",
+      nodeifactor.Status.Partner   = "Status on incoming ties (Partner)",
+      nodeifactor.Status.Associate = "Status on incoming ties (Associate)",
+      nodeofactor.Status.Partner   = "Status on outgoing ties (Partner)",
+      nodeofactor.Status.Associate = "Status on outgoing ties (Associate)",
+      nodematch.Gender        = "Gender homophily",
+      nodematch.Office        = "Office homophily",
+      nodematch.Practice      = "Practice homophily",
+      .default = raw
+    ),
+    CI.lower = Estimate - 1.96 * Std.Error,
+    CI.upper = Estimate + 1.96 * Std.Error,
+    across(c(Estimate, Std.Error, CI.lower, CI.upper, Odds.Ratio),
+           ~ round(.x, 3)),
+    p.value = round(p.value, 3),
+    Signif  = case_when(
+      p.value < 0.001 ~ "***",
+      p.value < 0.01  ~ "**",
+      p.value < 0.05  ~ "*",
+      TRUE            ~ ""
+    )
+  ) %>%
+  select(Term, Estimate, `Std.Error`, `p-value` = p.value,
+         `Odds Ratio` = Odds.Ratio, `CI Lower` = CI.lower,
+         `CI Upper` = CI.upper, Signif)
+
+knitr::kable(
+  res,
+  caption = "ERGM on Advice Network",
+  align   = "lrrrrrrc",
+  booktabs = TRUE
+) %>%
+  kable_styling(latex_options = "hold_position") %>%
+  footnote(
+    general = "Signif. codes: *** p<0.001; ** p<0.01; * p<0.05",
+    threeparttable = TRUE,
+    escape = FALSE
+  )
+```
+
+In the fitted ERGM for the lawyers’ advice network, six significant predictors emerge. First, age has an odds ratio of 0.979 (95 percent CI 0.972–0.987), meaning each additional year of age reduces a lawyer’s likelihood of seeking advice by about 2 percent. Second, partner status strongly increases one’s visibility as an advice source, with an incoming‐tie odds ratio of 4.624 (CI 3.78–5.66), so partners are roughly 4.6 times more likely than associates to be asked for guidance. Partners also ask for advice more often themselves, with an outgoing‐tie odds ratio of 1.351 (CI 1.12–1.64), reflecting a 35 percent higher propensity to initiate queries. Third, gender homophily carries an odds ratio of 1.515 (CI 1.27–1.81), indicating that same‐gender pairs are about 50 percent more likely to exchange advice than mixed‐gender pairs. Fourth, office homophily is the strongest predictor, with an odds ratio of 5.419 (CI 4.50–6.52), so sharing an office makes advice ties over five times more likely. Finally, practice‐area homophily yields an odds ratio of 4.160 (CI 3.49–4.96), meaning colleagues in the same specialty are just over four times as likely to consult one another. Collectively, these terms show that proximity and shared professional context dominate advice‐giving, while demographic and hierarchical factors play secondary yet meaningful roles.
+
+```{r advice-ERGM-gof}
+#### 6. Goodness‐of‐Fit ####
+gof_adv <- gof(
+  model_adv,
+  GOF = ~ idegree + odegree + espartners + dspartners + distance
+)
+```
+
+```{r gof_plots, fig.width=6, fig.height=9, dev='pdf', echo=FALSE, warning=FALSE, message=FALSE, fig.align='center'}
+old_par <- par(
+  mfrow  = c(3, 2),
+  mar    = c(4, 4, 2, 1),
+  oma    = c(0, 0, 2, 0),
+  family = "serif"
+)
+
+# suppress the internal title with main=""
+plot(gof_adv, main = "")
+
+mtext(
+  "Goodness-of-Fit Diagnostics",
+  outer = TRUE,
+  line  = 0,
+  family= "serif",
+  cex   = 1.2
+)
+
+par(old_par)
+```
+
+The goodness‐of‐fit diagnostics confirm that our ERGM reproduces the advice network’s core structural patterns with high fidelity. In the top‐left panel, the blue diamonds representing the observed counts of edges, partner‐status effects, and office homophily all lie well within the gray boxes and whiskers of their simulated distributions, demonstrating that those terms are correctly calibrated. The remaining panels compare simulated versus observed distributions for key features: the out-degree and in-degree plots show that the number of advice requests sent and received by each lawyer in the simulated networks closely mirrors reality, which validates our age, status, and homophily parameters. The edge-wise and dyad-wise shared-partners plots reveal that the model captures clustering and triadic closure—advice-giving pairs in the simulations share colleagues at nearly the same rates as in the real data. Finally, the minimum geodesic-distance plot shows that the simulated networks recreate the small-world character of the advice graph, with the same peaks at distances two and three and only negligible departures at longer distances. Altogether, these overlays of observed statistics on simulated envelopes provide explicit evidence that our combination of demographic and contextual predictors, together with the edge term, suffices to generate networks whose degree distributions, clustering tendencies, and reachability closely match the true advice-seeking structure.
+
+4. ERGM on coworking, advice and friendship lawyer networks
+
+The negative age coefficients across all three networks tell us that as lawyers get older, they become a little less likely to form advice (-0.009), co-working (-0.008) and friendship (-0.007) ties. Being a partner as a receiver has the strongest effect on advice networks. A partner is 1.080 times more likely than an associate to be asked for guidance. The odds of these nominations happening are more modest in the coworking (0.380) and friendship (0.278) networks. The partner status as a sender in the advice network presents a negative estimate of 0.361 which indicates that they are less likely than associates to seek advice. In coworking networks, they are 0.282 times likely than associates to nominate coworkers. The friendship network does not yield a statistically significant result and indicates no reliable difference between partners and associates. Lawyers of the same gender are 0.271 times more likely to exchange advice and 0.185 times more likely to be friends. The lack of a statistically significant result in for the coworking network indicates no reliable gender preference when coworking. 
+
+Compared to previous terms, lawyers sharing the same office and practicing the same form of law significantly boosts the odds of sharing a tie. Lawyers who work in the same office are 0.943 times more likely to share advice and 0.799 times to cowork than those working in different offices. There is a higher likelihood of sharing advice than coworking. Though not as high, lawyers in the same office are 0.499 times likely to form friendships within the same office as compared to lawyers in different offices. Sharing the same practice, significantly increases the likelihood of an advice (0.898) and coworking tie (0.821) which is plausible since their advice will align with their expertise and inform coworking relationships. However, the likelihood of same practice lawyers being friends is relatively low at 0.261.  
+
+Overall, reciprocity and transitivity are the strongest predictors of tie formation across all three networks. It is the strongest in coworking and friendship networks alluding to the mutual nature of collaborations and friendships. Relative to them, a lawyer is only 0.642 times more likely to seek advice who has sought advice from them. This is a high likelihood in general but when compared to other ties, it alludes to asymmetrical nature of advice-sharing. With a decay parameter of 0.7, the highly significant positive gwesp terms confirms the existence of triadic closure. strong tendency for triadic closure. Each additional shared advice partner increases the odds of an advice tie by 1.069, while each extra common coworker or friend raises the odds of coworking and friendship ties by factors of 0.980 and 0.945, respectively.
+
+The differences allude that physical proximity and shared professional context are the strongest predictors in all networks. Hierarchical status chiefly shapes advice ties. Coworking ties are driven by office homophily, reciprocity, and triadic closure. Friendship ties depend on demographic similarity and triadic closure.
+
+5. Conclusion
+
+Descriptive network metrics offer a clear, intuitive snapshot of connectivity, clustering, and reachability in the advice, coworker, and friendship layers. They reveal that coworker ties are the densest and have the shortest path lengths, but they cannot distinguish whether these patterns arise from simple popularity or from deeper structural forces such as assortative mixing by status or practice, mutual acknowledgment of ties (reciprocity), transitivity or clustering (triadic closure), and core–periphery or community structures. The configuration model isolates these higher-order structures—showing which levels of reciprocity, clustering, assortativity, and path-length deviation exceed what degree alone would produce—but it says nothing about how the network breaks into cohesive modules. Leiden community detection then uncovers those modules, producing internally connected, statistically robust groups that reflect weighted interactions, yet it cannot test the significance of specific attributes like age, status, or gender in forming ties. ERGMs fill that gap by formally testing hypotheses about node attributes and these structural effects and by reproducing observed degree, clustering, and path-length distributions in goodness-of-fit checks, but they demand careful, theory-driven model specification and can be sensitive to isolates or mis-specified terms.
+
+Coworker ties are the densest (22 percent) and most “small-world” (1.88 steps), driven by office proximity, mutual acknowledgment, and triadic closure. Advice relationships are hierarchical and selective: partners are 2.9 times more likely to be consulted, shared offices boost advice odds 2.6×, and practice alignment 2.5×, while each year of age reduces advice-seeking by 2 percent. Friendship ties are sparse but highly homophilous: same-gender, same-age, and same-status pairs are 1.5–2.6 times more likely to connect, clustering into three robust Boston–Providence and Hartford communities. Overall, proximity and shared professional context dominate, hierarchy shapes expertise exchange, and affinity governs social bonds. Advice seeking is essentially gender-neutral and crosses age cohorts, whereas friendships are strongly gendered and age‐clustered.
+
+Triadic closure and reciprocity hold true of every network and will likely be found in other networks as well. Findings about how proximity increases co-working and advice excahnge will hold true in other knowledge-intensive settings as law firms. These professions benefit from exchange of expert advice and collaboration on cases. Heirachical nature of knowledge-intensie jobs will shape information flow in other such jobs as well. Lasltly, homophily effects where people with simialr demographies interact mor organiscally with eachother (as freinds) is likely to be generalisable as well. 
+ 
+The geographic division between Massachusetts offices and the Connecticut branch is specific to this firm and has driven the formation of three distinct communities. Boston and Providence lawyers intermix within two communities, while Hartford forms a more isolated third cluster—reflecting regional distance. Had all offices been in Massachusetts, connectivity might have been uniformly higher. Likewise, the pronounced partner–associate hierarchy reflects the U.S. law‐firm career structure and would not necessarily appear in organizations with flatter or different promotion systems. The clear clustering around litigation versus corporate practice areas also mirrors this firm’s legal subcultures; in other industries—such as marketing or consulting—there is often more cross‐team collaboration and less rigid specialization. Finally, the presence of two isolates in the friendship network highlights how social ties can leave some individuals disconnected; as networks grow or in settings with fewer collaborative touchpoints—like call centers—isolates may be even more common.
+
+Future models could include interaction effects—such as office × status or age × practice—to test whether partners in the same office or senior lawyers in certain specialties are disproportionately likely to connect. ommunity detecition showed that providence and boston office overlap in communities. Further ERGM work on absolute office‐distance effects could quantify how physical separation dampens advice flows across Boston, Providence, and Hartford.
+
