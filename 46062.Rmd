@@ -5,6 +5,10 @@ date: "`r Sys.Date()`"
 output: 
   pdf_document:
     latex_engine: xelatex
+    fig_caption: true
+    number_sections: true
+    toc: false
+    keep_tex: true
 ---
 
 ```{r setup, include=FALSE}
@@ -20,6 +24,7 @@ library(igraph)
 library(dplyr)
 library(knitr)
 library(tidyr)
+library(tibble)
 library(ggraph)
 library(ggplot2)
 library(sna)
@@ -185,7 +190,7 @@ table2 <- comparison %>%
 # Print first half
 knitr::kable(
   table1,
-  caption   = "Empirical vs Config‐Model Means: Density  \\& Path Length",
+  caption   = "Empirical vs Configuration Model Network metrics",
   align     = "lcccc",
   booktabs  = TRUE
 ) %>%
@@ -193,17 +198,14 @@ knitr::kable(
     latex_options = c("hold_position", "scale_down"),
     full_width    = FALSE
   )
-
-cat("\n\n")  # small vertical space between tables
 ```
 
 For that reason, network density remains identical between the empirical networks and their corresponding configuration models across all three cases. In contrast, measures such as average path length, reciprocity, and transitivity, which capture higher-order structural properties, show divergence, highlights patterns that cannot be explained by degree alone and suggests meaningful network structure beyond random chance. In the coworker network, reciprocity jumps from 20% in the random graphs to 68% in the empirical network, showing that formal working relationships are far more mutually acknowledged than random wiring would produce. A similar jump occurs in the friendship layer which also indicates overwhelmingly mutual nature of such ties. Reciprocity in the advice network shows a jump as well but is closer to the baseline, suggesting that hierarchical norms and expertise may impact two-way acknowledgment.
 
-```{r}
-# Print second half
+```{r config-table-two}
 knitr::kable(
   table2,
-  caption   = "Empirical vs Config‐Model Means: Reciprocity \\& Transitivity",
+  caption   = "Empirical vs Configuration Model Network metrics",
   align     = "lcccc",
   booktabs  = TRUE
 ) %>%
@@ -215,37 +217,41 @@ knitr::kable(
 
 All three networks have average path lengths that are fairly similar to those of their corresponding configuration models, suggesting that global connectivity is largely informed by the degree distribution. However, the Advice and Friendship networks are slightly less efficient in terms of connectivity, with marginally longer average path lengths than their randomised counterparts. This could indicate the presence of structural features such as clustering or selective ties that limit the reach of these networks. In contrast, the Coworker network shows virtually no difference, with an average path length of 1.88 compared to 1.89 in the configuration model. This suggests that formal work relationships connect the firm as efficiently as possible, given how many ties each person has.
 
-Across all networks, empirical transitivity is consistently higher than in the configuration models. This points to a greater-than-random presence of triadic closure, where individuals are more likely to be connected to their colleagues' connections (Granovetter, 1973). The pattern is particularly strong in the Advice network, where transitivity is 0.479 compared to 0.348 in the configuration model. This suggests a network structure shaped by trust and professional familiarity which  are commonly observed in advice-seeking networks (Zagenczyk et al, 2009).
+Across all networks, empirical transitivity is consistently higher than in the configuration models. This points to a greater-than-random presence of triadic closure, where individuals are more likely to be connected to their colleagues' connections (Granovetter, 1973). The pattern is particularly strong in the Advice network, where transitivity is 0.479 compared to 0.348 in the configuration model. This suggests a network structure shaped by trust and professional familiarity which  are commonly observed in advice-seeking networks (Zagenczyk et al., 2009).
 
 2. Assortativity and Community Detection
 ```{r assortativity}
 # Compute assortativity in each layer
 get_assorts <- function(g, net_name) {
   tibble(
-    Network         = net_name,
-    `Gender Assort.` = assortativity_nominal(g, types  = V(g)$Gender, directed = TRUE),
-    `Age Assort.`    = assortativity(        g, values = V(g)$Age,    directed = TRUE),
+    Network = net_name,
+    `Gender Assort.` = assortativity_nominal(g, types = V(g)$Gender, directed = TRUE),
+    `Age Assort.` = assortativity(g, values = V(g)$Age, directed = TRUE),
     `Status Assort.` = assortativity_nominal(g, types  = V(g)$Status, directed = TRUE)
   )
 }
 
 assort_df <- bind_rows(
-  get_assorts(g_adv,  "Advice"),
-  get_assorts(g_cow,  "CoWork"),
+  get_assorts(g_adv, "Advice"),
+  get_assorts(g_cow, "CoWork"),
   get_assorts(g_frnd, "Friend")
 ) %>%
   mutate(across(where(is.numeric), ~ round(.x, 3)))
 
 knitr::kable(
   assort_df,
-  align   = "lccc",
-  caption = "Assortativity by Network and Attribute"
-)
-
+  caption   = "Assortativity by Network and Attribute",
+  align     = "lcccc",
+  booktabs  = TRUE
+) %>%
+  kable_styling(
+    latex_options = c("hold_position", "scale_down"),
+    full_width    = FALSE
+  )
 # assort_df
 ```
 
-In the advice network, gender assortativity is low at 0.087, indicating only a slight tendency for lawyers to seek and give advice within the same gender, while in the coworker network it is in the negative (−0.021), showing no meaningful gender preference in formal collaborations. By contrast, friendship ties display a moderate gender homophily of 0.206, meaning lawyers are more likely to form social connections with colleagues of the same gender. Age assortativity follows a similar pattern. In the advice network it is 0.237, demonstrating only a moderate preference for advice exchanges within age cohorts, whereas the coworker network’s coefficient of −0.045 indicates essentially no age‐based preference reflecting that formal work ties mix juniors and seniors quite freely. By contrast, the friendship network’s high assortativity of 0.446 shows that social bonds cluster strongly among similarly aged lawyers. Finally, status assortativity is 0.320 in the advice network which indicates that partners and associates tend to seek guidance from peers at the same rank more than chance. Assortativity in the coworker network is slightly negative at −0.100, reflecting that formal work ties bridge status levels a bit more than random, so associates’ partners routinely collaborate. In the friendship network the strong positive value of 0.552 demonstrates that friendships are overwhelmingly formed within the same status level rather than across tiers.
+The Friend network displays the highest assortativity across all attributes making it the most homophilous of the three networks. This suggests that friendships are strongly shaped by social similarity, especially by age (0.446) and professional status (0.552). In contrast, the Advice network shows moderate assortativity, led by the same attributes, indicating that advice-seeking is influenced by seniority and experience as well, but less strongly than friendship ties. The CoWork network exhibits disassortativity across all three attributes. This means that individuals are slightly more likely to be connected to colleagues who differ from them in these attributes suggesting that coworking relationships are not shaped by personal similarity and are more heterogeneous. 
 
 ```{r leiden-community-detection}
 # Community detection: Louvain & Leiden on undirected collapse, Infomap on directed g_agg
@@ -303,163 +309,174 @@ combined_ct <- table(long$Method, long$Community)
 
 knitr::kable(
   combined_ct,
-  caption = "Method vs Community"
-)
+  caption   = "Method vs Community",
+  align     = "lcccc",
+  booktabs  = TRUE
+) %>%
+  kable_styling(
+    latex_options = c("hold_position", "scale_down"),
+    full_width    = FALSE
+  )
 ```
 
-Infomap identified a single community, which offered no meaningful partitioning. Both Louvain and Leiden produced the same three communities, but Leiden was chosen for the final model because its two-phase refinement process guarantees that each community is internally well connected and continually maximizes modularity at every level of the hierarchy. In addition, Leiden’s ability to operate against the same configuration model used earlier ensures that the communities it uncovers reflect genuine higher order structure. 
+Infomap identified a single community, offering no meaningful partitioning. Both Louvain and Leiden detected three communities, but Leiden was selected as the final model because its multi-level modularity optimization ensures more stable and well-connected communities (Traag et al., 2019). It was run on an undirected aggregated network, as the focus was on identifying cohesive subgroups rather than modelling directional dynamics. 
 
-```{r advice-leiden}
-# Collapse directed g_agg into undirected and sum weights
-# 1. Collapse and run Leiden once
-g_und <- as.undirected(
-  g_agg, mode="collapse",
-  edge.attr.comb=list(weight="sum")
-)
+```{r leiden-prep}
 if ("layers" %in% edge_attr_names(g_und)) {
   g_und <- delete_edge_attr(g_und, "layers")
 }
-leiden_comm <- cluster_leiden(
-  g_und,
-  weights=E(g_und)$weight,
-  objective_function="modularity"
-)
+
+# Add Leiden membership (reusing leiden_mem from earlier)
 V(g_und)$leiden_f <- factor(
-  membership(leiden_comm),
-  labels = paste0("Comm", sort(unique(membership(leiden_comm))))
+  leiden_mem,
+  labels = paste0("Comm", sort(unique(leiden_mem)))
 )
 
-# 2. Make factor versions of your attributes
-#    (only if you haven't already)
-V(g_und)$Office_f   <- factor(V(g_und)$Office,
-                               levels = c(1,2,3),
-                               labels = c("Boston","Hartford","Providence"))
-V(g_und)$Practice_f <- factor(V(g_und)$Practice,
-                               levels = c(1,2),
-                               labels = c("Litigation","Corporate"))
-V(g_und)$Status_f   <- factor(V(g_und)$Status,
-                               levels = c(1,2),
-                               labels = c("Partner","Associate"))
+# Prepare categorical attributes for plotting
+V(g_und)$Office_f   <- factor(V(g_und)$Office, levels = c(1,2,3), labels = c("Boston","Hartford","Providence"))
+V(g_und)$Practice_f <- factor(V(g_und)$Practice, levels = c(1,2), labels = c("Litigation","Corporate"))
+V(g_und)$Status_f   <- factor(V(g_und)$Status, levels = c(1,2), labels = c("Partner","Associate"))
+```
 
+```{r leiden_ground_truth, echo=FALSE, message=FALSE}
+# Modularity of Leiden communities
+modularity_leiden <- modularity(g_und, V(g_und)$leiden_f, weights = E(g_und)$weight)
+
+# Assortativity for each attribute
+assort_office   <- assortativity_nominal(g_und, as.integer(V(g_und)$Office_f), directed = FALSE)
+assort_practice <- assortativity_nominal(g_und, as.integer(V(g_und)$Practice_f), directed = FALSE)
+assort_status   <- assortativity_nominal(g_und, as.integer(V(g_und)$Status_f), directed = FALSE)
+
+# Purity function
+compute_purity <- function(pred, truth) {
+  tab <- table(pred, truth)
+  correct <- sum(apply(tab, 1, max))
+  total <- length(truth)
+  return(correct / total)
+}
+
+# Purity for each attribute
+purity_office   <- compute_purity(V(g_und)$leiden_f, V(g_und)$Office_f)
+purity_practice <- compute_purity(V(g_und)$leiden_f, V(g_und)$Practice_f)
+purity_status   <- compute_purity(V(g_und)$leiden_f, V(g_und)$Status_f)
+
+# 2. Summary Metrics Table
+# Create a transposed summary table
+summary_matrix <- data.frame(
+  Metric = c("Purity", "Assortativity", "Modularity of Aggregated network"),
+  Office = c(round(purity_office, 3), round(assort_office, 3), round(modularity_leiden, 3)),
+  Practice = c(round(purity_practice, 3), round(assort_practice, 3), ""),
+  Status = c(round(purity_status, 3), round(assort_status, 3), "")
+)
+
+# Display the table
+kable(summary_matrix, caption = "Alignment of Leiden Communities with Node Attributes")
+
+# 3. Combined Contingency Table
+# Build each long contingency table
+office_long <- as.data.frame(table(V(g_und)$Office_f, V(g_und)$leiden_f)) %>%
+  rename(Level = Var1, Community = Var2, Count = Freq) %>%
+  mutate(Attribute = "Office")
+
+practice_long <- as.data.frame(table(V(g_und)$Practice_f, V(g_und)$leiden_f)) %>%
+  rename(Level = Var1, Community = Var2, Count = Freq) %>%
+  mutate(Attribute = "Practice")
+
+status_long <- as.data.frame(table(V(g_und)$Status_f, V(g_und)$leiden_f)) %>%
+  rename(Level = Var1, Community = Var2, Count = Freq) %>%
+  mutate(Attribute = "Status")
+
+# Combine all three into one long dataframe
+combined_long <- bind_rows(office_long, practice_long, status_long)
+
+# Create a row identifier: "Attribute_Level"
+combined_long <- combined_long %>%
+  mutate(Row = paste(Attribute, Level, sep = " - ")) %>%
+  select(Row, Community, Count)
+
+# Pivot to wide format: Communities as columns
+contingency_transposed <- pivot_wider(combined_long, names_from = Community, values_from = Count, values_fill = 0)
+
+# Display with clean rownames
+kable(contingency_transposed, caption = "Leiden Community Composition by Node Attributes")
+```
+
+The office attribute shows the strongest alignment with community structure, with the highest purity (0.930) and assortativity (0.354) among all attributes. Community 1 consists entirely of Boston-based lawyers, and Community 3 is composed exclusively of those in Hartford, indicating strong geographic clustering. Community 2 includes lawyers from all three offices, suggesting it serves as a bridge between locations. Overall, office affiliation is the primary driver of community formation in the network. Figure 2 visualises the distribution of office affiliation within the detected communities.
+
+The practice attribute also aligns strongly with community structure, with a high purity (0.873) and assortativity (0.340). The presence of litigation lawyers across all three communities suggests this practice group is broadly integrated in the network. In contrast, corporate lawyers appear only in Communities 1 and 2, indicating some clustering by practice, but less rigid than office-based clustering. This pattern suggests that office location has a stronger influence on how communities form than professional roles. By contrast, status has minimal influence on network formation with a purity of 0.606, and assortativity of 0.148. Each community contains a mix of partners and associates. This indicates that hierarchical rank does not strongly structure interactions in the aggregated network. Figures 3 and 4 illustrate community composition by practice and status, respectively.
+
+```{r plot_community, fig.width=6, fig.height=4, fig.align='center', out.width='60%', dev='pdf', fig.cap="Leiden Communities"}
+# Create layout
 set.seed(42)
-layout <- create_layout(g_und, layout="fr")
+layout <- create_layout(g_und, layout = "fr")
 
+# Base community-only plot
+ggraph(layout) +
+  geom_edge_link(aes(width = weight), colour = "grey80", alpha = 0.2) +
+  geom_node_point(aes(color = leiden_f), size = 4) +
+  scale_color_brewer("Leiden Community", palette = "Set1") +
+  guides(edge_width = "none") +
+  theme_void(base_family = "serif") +
+  theme(
+    legend.position = "right",
+    legend.title = element_text(size = 12),
+    legend.text = element_text(size = 10)
+  )
+```
+
+Overall, the Leiden-detected communities are visually well-defined in Figure 1. The modularity score of 0.298 indicates that the network exhibits meaningful clustering and is not purely random, though the division is moderate, with some overlap in node attributes. Office and practice boundaries shape ties across relationship networks, while status plays a minimal structural role. This suggests a network in which collaboration is driven more by geographic proximity and profession than by hierarchy.
+
+```{r plot_function}
+# Attribute-aware plot function
 plot_leiden_attr <- function(shape_attr, shape_vals, shape_breaks, shape_title) {
   ggraph(layout) +
-    geom_edge_link(aes(width = weight), colour="grey80", alpha=0.2) +
+    geom_edge_link(aes(width = weight), colour = "grey80", alpha = 0.2) +
     geom_node_point(aes(
       color = leiden_f,
       shape = .data[[shape_attr]]
     ), size = 4) +
-    geom_node_text(aes(label = name),
-                   family = "serif", size = 2.5, repel = TRUE) +
-    scale_color_brewer("Community", palette="Set1",
-                       guide = guide_legend(order=1, override.aes=list(size=6))) +
+    geom_node_text(aes(label = name), size = 2.5, family = "serif", repel = TRUE) +
+    scale_color_brewer("Community", palette = "Set1",
+                       guide = guide_legend(order = 1, override.aes = list(size = 6))) +
     scale_shape_manual(shape_title,
                        values = shape_vals,
                        breaks = shape_breaks,
-                       guide  = guide_legend(order=2, override.aes=list(size=6))) +
+                       guide = guide_legend(order = 2, override.aes = list(size = 6))) +
     theme_void(base_family = "serif") +
     theme(
       legend.position = "right",
-      legend.title    = element_text(size = 12),
-      legend.text     = element_text(size = 10)
+      legend.title = element_text(size = 12),
+      legend.text = element_text(size = 10)
     )
 }
 ```
 
-```{r leiden_ground_truth, echo=FALSE, message=FALSE, warning=FALSE}
-# 1. Attach Leiden community membership to the graph
-V(g_und)$Leiden <- membership(leiden_comm)
-
-# 2. Create a data frame with node-level info
-comm_truth <- tibble(
-  node      = V(g_und)$name,
-  Community = V(g_und)$Leiden,
-  Office    = V(g_und)$Office,
-  Practice  = V(g_und)$Practice,
-  Status    = V(g_und)$Status
-)
-
-# 3. Create contingency tables for each attribute
-tab_office   <- table(comm_truth$Community, comm_truth$Office)
-tab_practice <- table(comm_truth$Community, comm_truth$Practice)
-tab_status   <- table(comm_truth$Community, comm_truth$Status)
-
-# 4. Convert contingency tables to data.frames
-df_office   <- as.data.frame.matrix(tab_office)
-df_practice <- as.data.frame.matrix(tab_practice)
-df_status   <- as.data.frame.matrix(tab_status)
-
-# 5. Add suffix to column names to keep them distinct
-colnames(df_office)   <- paste0("Office_", colnames(df_office))
-colnames(df_practice) <- paste0("Practice_", colnames(df_practice))
-colnames(df_status)   <- paste0("Status_", colnames(df_status))
-
-# 6. Combine into one wide table (Community is the rownames)
-df_combined <- cbind(df_office, df_practice, df_status)
-
-# 7. Display the combined contingency table
-kable(
-  df_combined,
-  caption = "Contingency Tables: Leiden Community vs Office, Practice, and Status",
-  align   = "c",
-  booktabs = TRUE
-) %>%
-  kable_styling(latex_options = "scale_down")
-
-# 8. Compute purity (max % of dominant class per attribute in each community)
-purity <- comm_truth %>%
-  group_by(Community) %>%
-  summarize(
-    office_purity   = max(prop.table(table(Office)))   %>% round(2),
-    practice_purity = max(prop.table(table(Practice))) %>% round(2),
-    status_purity   = max(prop.table(table(Status)))   %>% round(2)
-  )
-
-# 9. Display purity table
-kable(
-  purity,
-  caption = "Leiden Community Purity by Attribute (max proportion within each)",
-  align   = "c",
-  booktabs = TRUE
-)
-```
-
 ```{r plot_office, fig.width=6, fig.height=4, fig.align='center', out.width='60%', dev='pdf', fig.cap="Leiden Communities \\& Office"}
-plot_leiden_attr(
-  shape_attr    = "Office_f",
-  shape_vals    = c(Boston = 16, Hartford = 17, Providence = 15),
-  shape_breaks  = c("Boston","Hartford","Providence"),
-  shape_title   = "Office"
-)
+plot_leiden_attr("Office_f",
+                       shape_vals = c(Boston = 16, Hartford = 17, Providence = 15),
+                       shape_breaks = c("Boston", "Hartford", "Providence"),
+                       shape_title = "Office")
 ```
-
-Geographically, lawyers in Boston divide evenly into communities one and two, while Hartford lawyers form their own relatively separate community three. Providence lawyers appear exclusively in community two, joining Boston’s corporate specialists rather than Hartford’s cluster. 
 
 ```{r plot_practice, fig.width=6, fig.height=4, fig.align='center', out.width='60%', dev='pdf', fig.cap="Leiden Communities \\& Practice"}
-plot_leiden_attr(
-  shape_attr    = "Practice_f",
-  shape_vals    = c(Litigation = 16, Corporate = 17),
-  shape_breaks  = c("Litigation","Corporate"),
-  shape_title   = "Practice"
-)
+plot_leiden_attr("Practice_f",
+                       shape_vals = c(Litigation = 16, Corporate = 17),
+                       shape_breaks = c("Litigation", "Corporate"),
+                       shape_title = "Practice")
 ```
-
-In the Communities and Practice plot, community one is dominated by litigation practitioners and community two by corporate lawyers, suggesting that these two groups interact almost exclusively within their own practice area. By contrast, community three lawyers from Hartford collaborate mostly among themselves. This may reflect Hartford’s greater distance from Providence and Boston, making intercity ties less frequent. The density of grey weighted edges between communities one and two, aggregated from coworking, advice-seeking, and friendships, underscores the close bonds among Massachusetts lawyers.
 
 ```{r plot_status, fig.width=6, fig.height=4, fig.align='center', out.width='60%', dev='pdf', fig.cap="Leiden Communities \\& Status"}
-plot_leiden_attr(
-  shape_attr    = "Status_f",
-  shape_vals    = c(Partner = 16, Associate = 17),
-  shape_breaks  = c("Partner","Associate"),
-  shape_title   = "Status"
-)
+plot_leiden_attr("Status_f",
+                       shape_vals = c(Partner = 16, Associate = 17),
+                       shape_breaks = c("Partner", "Associate"),
+                       shape_title = "Status")
 ```
 
-All three communities contain a mix of partners and associates, illustrating the hierarchical nature of the profession: associates work with and seek advice from partners while forming friendships at similar status levels. This pattern aligns with homophily theory, which predicts that similarity in attributes such as status fosters tie formation and mutual acknowledgment.
 
-These results show that lawyers’ day-to-day collaborations are driven purely by work needs—coworker ties ignore gender, age, and status—whereas the exchange of expertise and the formation of social bonds are tightly governed by similarity and proximity. When seeking advice, lawyers prefer peers of the same rank and similar age, funnelling questions through established experts rather than casting a wide net. Friendships are even more exclusive: colleagues almost always befriend others of the same gender, age cohort, and status, and geographic distance (as in Hartford versus Boston and Providence) further entrenches social cliques. In short, professional efficiency overrides demographic differences in formal work, but affinity and hierarchy dominate who you turn to for advice and who you count as a friend.
+```markdown
+**Figure 1.** *Leiden Communities & Status*
+```
+
 
 3. ERGM and Goodness of Fit
 ```{r advice-ERGM}
@@ -626,8 +643,12 @@ The geographic division between Massachusetts offices and the Connecticut branch
 
 Future models could include interaction effects—such as office × status or age × practice—to test whether partners in the same office or senior lawyers in certain specialties are disproportionately likely to connect. ommunity detecition showed that providence and boston office overlap in communities. Further ERGM work on absolute office‐distance effects could quantify how physical separation dampens advice flows across Boston, Providence, and Hartford.
 
+Given the high reciprocity in advice networks, it would be better if advice networks were retained as directed networks and freinship and cowroker networks as undirected. 
+
 References
 
 Granovetter, M. S. (1973). The Strength of Weak Ties. American Journal of Sociology, 78(6), 1360–1380. http://www.jstor.org/stable/2776392
 
 Zagenczyk, Thomas & Murrell, Audrey. (2009). It is Better to Receive than to Give: Advice Network Effects on Job and Work-Unit Attachment. Journal of Business and Psychology. 24. 139-152. 10.1007/s10869-009-9095-3. 
+
+Traag, V.A., Waltman, L. & van Eck, N.J. From Louvain to Leiden: guaranteeing well-connected communities. Sci Rep 9, 5233 (2019). https://doi.org/10.1038/s41598-019-41695-z
