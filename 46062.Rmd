@@ -1,14 +1,10 @@
 ---
-title: "A Study of Social Network Patterns Among Lawyers"
+title: "The Strength of Professional Relationship Ties: A Network Analysis of East Coast Law Firms"
 author: '46062'
 date: "`r Sys.Date()`"
 output: 
   pdf_document:
     latex_engine: xelatex
-    fig_caption: true
-    number_sections: true
-    toc: false
-    keep_tex: true
 ---
 
 ```{r setup, include=FALSE}
@@ -115,7 +111,7 @@ knitr::kable(
 
 Among the three relationship networks, the coworker network is the most tightly knit, with a density of 0.222, meaning that 22% of all possible coworker ties are realised. This network also has the shortest average path length, meaning that nearly everyone is connected by just one or, at most, two colleagues, making it the easiest network through which to connect across the firm.
 
-The configuration model was chosen as the baseline because it preserves each lawyer’s degree which means it retains how many ties each node has while randomizing who they connect to. This ensures that any differences we observe between the real networks and their randomised counterparts arise from higher-order structures such as reciprocity, transitivity, average path length, and overall community organisation, rather than from simple variations in degree.
+The configuration model was chosen as the baseline because it preserves each lawyer’s degree which means it retains how many ties each node has while randomising who they connect to. This ensures that any differences we observe between the real networks and their randomised counterparts arise from higher order structures such as reciprocity, transitivity, average path length, and overall community organisation, rather than from simple variations in degree.
 
 ```{r configuration-network-stats}
 ## Part 2: Compare each empirical network to its randomized baseline
@@ -200,7 +196,7 @@ knitr::kable(
   )
 ```
 
-For that reason, network density remains identical between the empirical networks and their corresponding configuration models across all three cases. In contrast, measures such as average path length, reciprocity, and transitivity, which capture higher-order structural properties, show divergence, highlights patterns that cannot be explained by degree alone and suggests meaningful network structure beyond random chance. In the coworker network, reciprocity jumps from 20% in the random graphs to 68% in the empirical network, showing that formal working relationships are far more mutually acknowledged than random wiring would produce. A similar jump occurs in the friendship layer which also indicates overwhelmingly mutual nature of such ties. Reciprocity in the advice network shows a jump as well but is closer to the baseline, suggesting that hierarchical norms and expertise may impact two-way acknowledgment.
+For that reason, network density remains identical between the empirical networks and their corresponding configuration models across all three cases. In contrast, measures such as average path length, reciprocity, and transitivity show divergence and highlights patterns that cannot be explained by degree alone. This suggests meaningful network structure beyond random chance. In the coworker network, reciprocity jumps from 20% in the random graphs to 68% in the empirical network, showing that formal working relationships are far more mutually acknowledged than random wiring would produce. A similar jump occurs in the friendship layer which also indicates overwhelmingly mutual nature of such ties. Reciprocity in the advice network shows a jump as well but is closer to the baseline, suggesting that hierarchical norms and expertise may impact the directionality of such ties.
 
 ```{r config-table-two}
 knitr::kable(
@@ -215,9 +211,9 @@ knitr::kable(
   )
 ```
 
-All three networks have average path lengths that are fairly similar to those of their corresponding configuration models, suggesting that global connectivity is largely informed by the degree distribution. However, the Advice and Friendship networks are slightly less efficient in terms of connectivity, with marginally longer average path lengths than their randomised counterparts. This could indicate the presence of structural features such as clustering or selective ties that limit the reach of these networks. In contrast, the Coworker network shows virtually no difference, with an average path length of 1.88 compared to 1.89 in the configuration model. This suggests that formal work relationships connect the firm as efficiently as possible, given how many ties each person has.
+All three networks have average path lengths that are fairly similar to those of their corresponding configuration models, suggesting that global connectivity is largely informed by the degree distribution. However, the advice and friendship networks are slightly less efficient in terms of connectivity, with marginally longer average path lengths than their randomised counterparts. This could indicate the presence of structural features such as clustering or selective ties that limit the reach of these networks. In contrast, the coworker network shows virtually no difference, with an average path length of 1.88 compared to 1.89 in the configuration model. This suggests that formal work relationships connect the firm as efficiently as possible, given how many ties each lawyer has.
 
-Across all networks, empirical transitivity is consistently higher than in the configuration models. This points to a greater-than-random presence of triadic closure, where individuals are more likely to be connected to their colleagues' connections (Granovetter, 1973). The pattern is particularly strong in the Advice network, where transitivity is 0.479 compared to 0.348 in the configuration model. This suggests a network structure shaped by trust and professional familiarity which  are commonly observed in advice-seeking networks (Zagenczyk et al., 2009).
+Across all networks, empirical transitivity is consistently higher than in the configuration models. This points to a greater than random presence of triadic closure, where individuals are more likely to be connected to their colleagues' connections (Granovetter, 1973). The pattern is particularly strong in the Advice network, where transitivity is 0.479 compared to 0.348 in the configuration model. This suggests a network structure shaped by professional familiarity which  are commonly observed in advice-seeking networks (Zagenczyk et al., 2009).
 
 2. Assortativity and Community Detection
 ```{r assortativity}
@@ -251,7 +247,7 @@ knitr::kable(
 # assort_df
 ```
 
-The Friend network displays the highest assortativity across all attributes making it the most homophilous of the three networks. This suggests that friendships are strongly shaped by social similarity, especially by age (0.446) and professional status (0.552). In contrast, the Advice network shows moderate assortativity, led by the same attributes, indicating that advice-seeking is influenced by seniority and experience as well, but less strongly than friendship ties. The CoWork network exhibits disassortativity across all three attributes. This means that individuals are slightly more likely to be connected to colleagues who differ from them in these attributes suggesting that coworking relationships are not shaped by personal similarity and are more heterogeneous. 
+The friendship network displays the highest assortativity across all attributes making it the most homophilous of the three networks. This suggests that friendships are strongly shaped by social similarity, especially by age (0.446) and professional status (0.552). In contrast, the advice network shows moderate assortativity, led by the same attributes, indicating that advice-seeking is influenced by seniority and experience as well, but less strongly than friendship ties. The coworking network exhibits disassortativity across all three attributes. This means that individuals are slightly more likely to be connected to colleagues who differ from them in these attributes suggesting that coworking relationships are more heterogeneous. 
 
 ```{r leiden-community-detection}
 # Community detection: Louvain & Leiden on undirected collapse, Infomap on directed g_agg
@@ -319,7 +315,7 @@ knitr::kable(
   )
 ```
 
-Infomap identified a single community, offering no meaningful partitioning. Both Louvain and Leiden detected three communities, but Leiden was selected as the final model because its multi-level modularity optimization ensures more stable and well-connected communities (Traag et al., 2019). It was run on an undirected aggregated network, as the focus was on identifying cohesive subgroups rather than modelling directional dynamics. 
+Infomap identified a single community, offering no meaningful partitioning. Both Louvain and Leiden detected three communities, but Leiden was selected as the final model because its multi-level modularity optimization ensures more stable and well-connected communities (Traag et al., 2019). It was run on an undirected aggregated network, as the focus was on identifying cohesive subgroups rather than modelling for directional dynamics. 
 
 ```{r leiden-prep}
 if ("layers" %in% edge_attr_names(g_und)) {
@@ -401,11 +397,11 @@ contingency_transposed <- pivot_wider(combined_long, names_from = Community, val
 kable(contingency_transposed, caption = "Leiden Community Composition by Node Attributes")
 ```
 
-The office attribute shows the strongest alignment with community structure, with the highest purity (0.930) and assortativity (0.354) among all attributes. Community 1 consists entirely of Boston-based lawyers, and Community 3 is composed exclusively of those in Hartford, indicating strong geographic clustering. Community 2 includes lawyers from all three offices, suggesting it serves as a bridge between locations. Overall, office affiliation is the primary driver of community formation in the network. Figure 2 visualises the distribution of office affiliation within the detected communities.
+The office attribute shows the strongest alignment with community structure, with the highest purity (0.930) and assortativity (0.354) among all attributes. Community 1 consists entirely of Boston based lawyers, and Community 3 is composed exclusively of those in Hartford, indicating strong geographic clustering. Community 2 includes lawyers from all three offices, suggesting thst it serves as a bridge between locations. Overall, office affiliation is the primary driver of community formation in the network. Figure 2 visualises this distribution of office affiliation within the detected communities.
 
-The practice attribute also aligns strongly with community structure, with a high purity (0.873) and assortativity (0.340). The presence of litigation lawyers across all three communities suggests this practice group is broadly integrated in the network. In contrast, corporate lawyers appear only in Communities 1 and 2, indicating some clustering by practice, but less rigid than office-based clustering. This pattern suggests that office location has a stronger influence on how communities form than professional roles. By contrast, status has minimal influence on network formation with a purity of 0.606, and assortativity of 0.148. Each community contains a mix of partners and associates. This indicates that hierarchical rank does not strongly structure interactions in the aggregated network. Figures 3 and 4 illustrate community composition by practice and status, respectively.
+The practice attribute also aligns strongly with community structure, with a high purity (0.873) and assortativity (0.340). The presence of litigation lawyers across all three communities suggests this practice group is broadly integrated in the network. In contrast, corporate lawyers appear only in Communities 1 and 2, indicating some clustering by practice, but less rigid than office-based clustering. This pattern suggests that office location has a stronger influence on how communities form than professional roles. By contrast, status has the least influence on network formation with a purity of 0.606, and assortativity of 0.148. Each community contains a mix of partners and associates. This indicates that hierarchical rank does not strongly structure interactions in the aggregated network. Figures 3 and 4 illustrate these community compositions by practice and status, respectively.
 
-```{r plot_community, fig.width=6, fig.height=4, fig.align='center', out.width='60%', dev='pdf', fig.cap="Leiden Communities"}
+```{r plot_community, fig.width=6, fig.height=3, fig.align='center', fig.pos = 'H', out.width='60%', dev='pdf', fig.cap="Leiden Communities"}
 # Create layout
 set.seed(42)
 layout <- create_layout(g_und, layout = "fr")
@@ -424,7 +420,7 @@ ggraph(layout) +
   )
 ```
 
-Overall, the Leiden-detected communities are visually well-defined in Figure 1. The modularity score of 0.298 indicates that the network exhibits meaningful clustering and is not purely random, though the division is moderate, with some overlap in node attributes. Office and practice boundaries shape ties across relationship networks, while status plays a minimal structural role. This suggests a network in which collaboration is driven more by geographic proximity and profession than by hierarchy.
+Overall, the Leiden-detected communities are visually well-defined in Figure 1. The modularity score of 0.298 indicates that the network exhibits meaningful clustering and is not purely random. However, the division is moderate, with some overlap in node attributes. Office and practice attributes shape ties across the relationship networks, while status plays a minimal structural role. This suggests a network in which community is driven more by geographic proximity and profession than by hierarchy.
 
 ```{r plot_function}
 # Attribute-aware plot function
@@ -451,21 +447,21 @@ plot_leiden_attr <- function(shape_attr, shape_vals, shape_breaks, shape_title) 
 }
 ```
 
-```{r plot_office, fig.width=6, fig.height=4, fig.align='center', out.width='60%', dev='pdf', fig.cap="Leiden Communities \\& Office"}
+```{r plot_office, fig.width=6, fig.height=3, fig.align='center', fig.pos = 'H', out.width='60%', dev='pdf', fig.cap="Leiden Communities \\& Office"}
 plot_leiden_attr("Office_f",
                        shape_vals = c(Boston = 16, Hartford = 17, Providence = 15),
                        shape_breaks = c("Boston", "Hartford", "Providence"),
                        shape_title = "Office")
 ```
 
-```{r plot_practice, fig.width=6, fig.height=4, fig.align='center', out.width='60%', dev='pdf', fig.cap="Leiden Communities \\& Practice"}
+```{r plot_practice, fig.width=6, fig.height=3, fig.align='center', fig.pos = 'H', out.width='60%', dev='pdf', fig.cap="Leiden Communities \\& Practice"}
 plot_leiden_attr("Practice_f",
                        shape_vals = c(Litigation = 16, Corporate = 17),
                        shape_breaks = c("Litigation", "Corporate"),
                        shape_title = "Practice")
 ```
 
-```{r plot_status, fig.width=6, fig.height=4, fig.align='center', out.width='60%', dev='pdf', fig.cap="Leiden Communities \\& Status"}
+```{r plot_status, fig.width=6, fig.height=3.5, fig.align='center', fig.pos = 'H', out.width='60%', dev='pdf', fig.cap="Leiden Communities \\& Status"}
 plot_leiden_attr("Status_f",
                        shape_vals = c(Partner = 16, Associate = 17),
                        shape_breaks = c("Partner", "Associate"),
@@ -473,12 +469,7 @@ plot_leiden_attr("Status_f",
 ```
 
 
-```markdown
-**Figure 1.** *Leiden Communities & Status*
-```
-
-
-3. ERGM and Goodness of Fit
+3. ERGM on Advice Network and Goodness of Fit
 ```{r advice-ERGM}
 # Read data & build igraph Advice network
 law_adv <- read.csv("Law_Advice.csv",  header = TRUE, as.is = TRUE)
@@ -587,7 +578,7 @@ knitr::kable(
   )
 ```
 
-In the fitted ERGM for the lawyers’ advice network, six significant predictors emerge. First, age has an odds ratio of 0.979 (95 percent CI 0.972–0.987), meaning each additional year of age reduces a lawyer’s likelihood of seeking advice by about 2 percent. Second, partner status strongly increases one’s visibility as an advice source, with an incoming‐tie odds ratio of 4.624 (CI 3.78–5.66), so partners are roughly 4.6 times more likely than associates to be asked for guidance. Partners also ask for advice more often themselves, with an outgoing‐tie odds ratio of 1.351 (CI 1.12–1.64), reflecting a 35 percent higher propensity to initiate queries. Third, gender homophily carries an odds ratio of 1.515 (CI 1.27–1.81), indicating that same‐gender pairs are about 50 percent more likely to exchange advice than mixed‐gender pairs. Fourth, office homophily is the strongest predictor, with an odds ratio of 5.419 (CI 4.50–6.52), so sharing an office makes advice ties over five times more likely. Finally, practice‐area homophily yields an odds ratio of 4.160 (CI 3.49–4.96), meaning colleagues in the same specialty are just over four times as likely to consult one another. Collectively, these terms show that proximity and shared professional context dominate advice‐giving, while demographic and hierarchical factors play secondary yet meaningful roles.
+The ERGM results reveal that advice giving relationships among lawyers are most strongly predicted by office location, practice area, and partner status. Office homophily has the strongest effect, with an odds ratio of 5.419, indicating that lawyers working in the same office are over five times more likely to form advice ties. Practice homophily is relatively high, showing that colleagues in the same legal specialty are 4.160 times more likely to seek advice from each other. Partner status strongly increases one’s viability as an advice source, since partners are 4.624 times more likely than associates to be asked for guidance. They are also 1.351 times more likely to ask for advice from others in the network. This attribute demonstrates the asymmetrical influence of hierarchy on advice seeking. Gender homophily is modest, with same gender pairs about 1.515 times more likely to exchange advice than mixed gender pairs. Finally, age has a small but negative effect, suggesting that as lawyers grow older, their likelihood of seeking advice declines slightly. These findings reinforce that proximity and shared professional context captured by office and practice are the strongest drivers of advice-giving, but also reveal that demographic and hierarchical factors play an important role in advice networks.
 
 ```{r ERGM-gof}
 #### 6. Goodness‐of‐Fit ####
@@ -596,6 +587,12 @@ gof_adv <- gof(
   GOF = ~ idegree + odegree + espartners + dspartners + distance
 )
 ```
+
+The goodness-of-fit tests indicate that the predictors used in the ERGM provide a partial fit for the advice network. In the model statistics plot, the observed values fall within the simulated range, confirming that the model accurately captures the effects of the included terms.
+
+However, the model fits certain structural features less well. In both the out-degree and in-degree distributions, observed values deviate from the simulations, particularly for the degrees at the higher end (around degree 10 for out-degree, and even earlier for in-degree). This means the model captures how much advice is given reasonably well, but struggles to account for who is highly consulted for advice. While the model explains advice-seeking behavior based on attributes, it does not account for individuals who may act as advice hubs, likely due to the absence of predictors that model for popularity or centrality. The edge-wise shared partners plot shows that the model underestimates local triadic closure, with the observed values exceeding the simulations for ties with 2–5 mutual contacts. Similarly, the dyad-wise shared partners plot indicates that lawyers share more mutual contacts than the model predicts, suggesting that it fails to capture the tendency of advice ties to form within tightly connected groups. Additionally, the minimum geodesic distance plot reveals that the model underestimates indirect connectivity, particularly second-degree paths. This implies that the real network contains more interconnected clusters than the model accounts for (Hunter, 2005).
+
+In summary, while the ERGM effectively captures attribute-based effects and overall connectivity, it misses local structural patterns. Including additional structural terms such as transitivity will improve the model’s fit.
 
 ```{r gof_plots, fig.width=6, fig.height=9, dev='pdf', echo=FALSE, warning=FALSE, message=FALSE, fig.align='center'}
 old_par <- par(
@@ -619,36 +616,38 @@ mtext(
 par(old_par)
 ```
 
-The goodness‐of‐fit diagnostics confirm that our ERGM reproduces the advice network’s core structural patterns with high fidelity. In the top‐left panel, the blue diamonds representing the observed counts of edges, partner‐status effects, and office homophily all lie well within the gray boxes and whiskers of their simulated distributions, demonstrating that those terms are correctly calibrated. The remaining panels compare simulated versus observed distributions for key features: the out-degree and in-degree plots show that the number of advice requests sent and received by each lawyer in the simulated networks closely mirrors reality, which validates our age, status, and homophily parameters. The edge-wise and dyad-wise shared-partners plots reveal that the model captures clustering and triadic closure—advice-giving pairs in the simulations share colleagues at nearly the same rates as in the real data. Finally, the minimum geodesic-distance plot shows that the simulated networks recreate the small-world character of the advice graph, with the same peaks at distances two and three and only negligible departures at longer distances. Altogether, these overlays of observed statistics on simulated envelopes provide explicit evidence that our combination of demographic and contextual predictors, together with the edge term, suffices to generate networks whose degree distributions, clustering tendencies, and reachability closely match the true advice-seeking structure.
 
 4. ERGM on coworking, advice and friendship lawyer networks
 
-The negative age coefficients across all three networks tell us that as lawyers get older, they become a little less likely to form advice (-0.009), co-working (-0.008) and friendship (-0.007) ties. Being a partner as a receiver has the strongest effect on advice networks. A partner is 1.080 times more likely than an associate to be asked for guidance. The odds of these nominations happening are more modest in the coworking (0.380) and friendship (0.278) networks. The partner status as a sender in the advice network presents a negative estimate of 0.361 which indicates that they are less likely than associates to seek advice. In coworking networks, they are 0.282 times likely than associates to nominate coworkers. The friendship network does not yield a statistically significant result and indicates no reliable difference between partners and associates. Lawyers of the same gender are 0.271 times more likely to exchange advice and 0.185 times more likely to be friends. The lack of a statistically significant result in for the coworking network indicates no reliable gender preference when coworking. 
+The negative age coefficients across all three networks indicate that as lawyers get older, they become slightly less likely to form advice (−0.009), coworking (−0.008), and friendship (−0.007) ties. Partner status as a receiver has the strongest effect in the advice network where partners are 1.080 times more likely than associates to be asked for guidance. The effect is smaller in the coworking (0.380) and friendship (0.278) networks. As senders, partners are less likely to seek advice (0.361) or nominate coworkers (0.282) than associates. In the friendship network, partner status has no statistically significant effect, suggesting no consistent difference between ranks. Gender similarity modestly increases the likelihood of forming advice (0.271) and friendship ties (0.185), but has no reliable effect on coworking. 
 
-Compared to previous terms, lawyers sharing the same office and practicing the same form of law significantly boosts the odds of sharing a tie. Lawyers who work in the same office are 0.943 times more likely to share advice and 0.799 times to cowork than those working in different offices. There is a higher likelihood of sharing advice than coworking. Though not as high, lawyers in the same office are 0.499 times likely to form friendships within the same office as compared to lawyers in different offices. Sharing the same practice, significantly increases the likelihood of an advice (0.898) and coworking tie (0.821) which is plausible since their advice will align with their expertise and inform coworking relationships. However, the likelihood of same practice lawyers being friends is relatively low at 0.261.  
+Office and practice alignment significantly increase the odds of tie formation across all networks. Lawyers in the same office are 0.943 times more likely to share advice, 0.799 to cowork, and 0.499 to form friendships, compared to those in different offices. This suggests that advice is more influenced by location than friendship. Sharing a practice area increases the likelihood of advice (0.898) and coworking ties (0.821), consistent with expectation on expertise alignment, while its effect on friendship (0.261) is relatively weak.
 
-Overall, reciprocity and transitivity are the strongest predictors of tie formation across all three networks. It is the strongest in coworking and friendship networks alluding to the mutual nature of collaborations and friendships. Relative to them, a lawyer is only 0.642 times more likely to seek advice who has sought advice from them. This is a high likelihood in general but when compared to other ties, it alludes to asymmetrical nature of advice-sharing. With a decay parameter of 0.7, the highly significant positive gwesp terms confirms the existence of triadic closure. strong tendency for triadic closure. Each additional shared advice partner increases the odds of an advice tie by 1.069, while each extra common coworker or friend raises the odds of coworking and friendship ties by factors of 0.980 and 0.945, respectively.
+Reciprocity and transitivity are the strongest structural predictors across all networks. Reciprocity is especially prominent in coworking and friendship, reflecting the mutual nature of those ties. In contrast, advice ties are more directional because a lawyer is 0.642 times more likely to seek advice from someone who has sought advice from them. The significant positive gwesp terms (decay = 0.7) confirm strong triadic closure. Each additional shared advice partner increases the odds of a tie by 1.069, while each extra common coworker or friend raises the odds of a tie by 0.980 and 0.945, respectively.
 
-The differences allude that physical proximity and shared professional context are the strongest predictors in all networks. Hierarchical status chiefly shapes advice ties. Coworking ties are driven by office homophily, reciprocity, and triadic closure. Friendship ties depend on demographic similarity and triadic closure.
+Overall, physical proximity and shared professional context are the strongest predictors of tie formation. Hierarchy most clearly shapes advice ties, while coworking is driven by office proximity, reciprocity, and closure. Friendship, by contrast, relies more on demographic similarity and transitive clustering. Community detection reinforces these findings, showing that office location is the dominant force behind network structure. Lawyers tend to cluster geographically, while practice area contributes to grouping less rigidly, and status shows minimal influence. ERGM results also align with this structural view because office and practice homophily were strong predictors of advice ties. However, goodness-of-fit diagnostics reveal that while the model effectively captures attribute-based tie formation, it under represents structural features such as clustering and centralisation.
 
 5. Conclusion
 
-Descriptive network metrics offer a clear, intuitive snapshot of connectivity, clustering, and reachability in the advice, coworker, and friendship layers. They reveal that coworker ties are the densest and have the shortest path lengths, but they cannot distinguish whether these patterns arise from simple popularity or from deeper structural forces such as assortative mixing by status or practice, mutual acknowledgment of ties (reciprocity), transitivity or clustering (triadic closure), and core–periphery or community structures. The configuration model isolates these higher-order structures—showing which levels of reciprocity, clustering, assortativity, and path-length deviation exceed what degree alone would produce—but it says nothing about how the network breaks into cohesive modules. Leiden community detection then uncovers those modules, producing internally connected, statistically robust groups that reflect weighted interactions, yet it cannot test the significance of specific attributes like age, status, or gender in forming ties. ERGMs fill that gap by formally testing hypotheses about node attributes and these structural effects and by reproducing observed degree, clustering, and path-length distributions in goodness-of-fit checks, but they demand careful, theory-driven model specification and can be sensitive to isolates or mis-specified terms.
+Descriptive network metrics provided an initial view of connectivity, mutuality, and clustering. These revealed that coworking and friendship ties are highly reciprocal, reflecting mutual collaboration, whereas advice ties are more directional, indicating asymmetry and hierarchy typical of expertise-based relationships. All three networks showed evidence of triadic closure, but descriptive metrics alone cannot determine whether these structural patterns result from random processes or systematic tendencies such as homophily or role based interactions.
 
-Coworker ties are the densest (22 percent) and most “small-world” (1.88 steps), driven by office proximity, mutual acknowledgment, and triadic closure. Advice relationships are hierarchical and selective: partners are 2.9 times more likely to be consulted, shared offices boost advice odds 2.6×, and practice alignment 2.5×, while each year of age reduces advice-seeking by 2 percent. Friendship ties are sparse but highly homophilous: same-gender, same-age, and same-status pairs are 1.5–2.6 times more likely to connect, clustering into three robust Boston–Providence and Hartford communities. Overall, proximity and shared professional context dominate, hierarchy shapes expertise exchange, and affinity governs social bonds. Advice seeking is essentially gender-neutral and crosses age cohorts, whereas friendships are strongly gendered and age‐clustered.
+To address this, the configuration model was used to isolate structural tendencies. This approach confirmed that transitivity, assortativity, and path length in the empirical networks differ from what would be expected by chance alone. However, the configuration model only highlights deviations from randomness and does not indicate which node level attributes drive community formations.
 
-Triadic closure and reciprocity hold true of every network and will likely be found in other networks as well. Findings about how proximity increases co-working and advice excahnge will hold true in other knowledge-intensive settings as law firms. These professions benefit from exchange of expert advice and collaboration on cases. Heirachical nature of knowledge-intensie jobs will shape information flow in other such jobs as well. Lasltly, homophily effects where people with simialr demographies interact mor organiscally with eachother (as freinds) is likely to be generalisable as well. 
- 
-The geographic division between Massachusetts offices and the Connecticut branch is specific to this firm and has driven the formation of three distinct communities. Boston and Providence lawyers intermix within two communities, while Hartford forms a more isolated third cluster—reflecting regional distance. Had all offices been in Massachusetts, connectivity might have been uniformly higher. Likewise, the pronounced partner–associate hierarchy reflects the U.S. law‐firm career structure and would not necessarily appear in organizations with flatter or different promotion systems. The clear clustering around litigation versus corporate practice areas also mirrors this firm’s legal subcultures; in other industries—such as marketing or consulting—there is often more cross‐team collaboration and less rigid specialization. Finally, the presence of two isolates in the friendship network highlights how social ties can leave some individuals disconnected; as networks grow or in settings with fewer collaborative touchpoints—like call centers—isolates may be even more common.
+To uncover subgroups influenced by such attributes, undirected Leiden community detection was applied to the aggregated network. This revealed that office location dominates community structure, with practice area contributing moderately, and status playing a minimal role. However, this approach required collapsing the directed advice network into an undirected graph to make it compatible with coworking and friendship ties. This trade-off limited the ability to model the clear directional nature of advice, which could have provided a more nuanced view of hierarchy and information flow.
 
-Future models could include interaction effects—such as office × status or age × practice—to test whether partners in the same office or senior lawyers in certain specialties are disproportionately likely to connect. ommunity detecition showed that providence and boston office overlap in communities. Further ERGM work on absolute office‐distance effects could quantify how physical separation dampens advice flows across Boston, Providence, and Hartford.
+To statistically evaluate which attributes and structural features predict tie formation, ERGMs were employed. These confirmed that office homophily is the strongest predictor of advice ties (odds ratio = 5.419), followed by practice alignment and partner status. These results support the idea that physical proximity and shared expertise drive most relational patterns. However, goodness-of-fit diagnostics revealed that the model explains who connects based on shared attributes, but not fully how ties form through indirect paths or shared contacts.
 
-Given the high reciprocity in advice networks, it would be better if advice networks were retained as directed networks and freinship and cowroker networks as undirected. 
+Findings on triadic closure, reciprocity, and the role of proximity in coworking and advice ties can generalise to other knowledge intensive professions where collaboration and expert consultation are required. Similarly, homophily in friendship networks based on shared age, gender, and status is broadly applicable across contexts. However, the geographic divide between Massachusetts and Hartford, in Conneticut appears firm-specific, producing three distinct communities unlikely to occur in other organisations. The distinct partner associate hierarchy reflects the U.S. law firm structure and may not apply in non-US organisations. Likewise, the  practice area clustering mirrors this firm's legal subcultures and may differ in industries such as marketing or consultanacy with more specialisations. Future models could test how office distance or attribute interactions influence tie formation more generally.
 
-References
+## References
 
-Granovetter, M. S. (1973). The Strength of Weak Ties. American Journal of Sociology, 78(6), 1360–1380. http://www.jstor.org/stable/2776392
+Granovetter, M. S. (1973). The Strength of Weak Ties. American Journal of Sociology, 78(6), 1360–1380. [http://www.jstor.org/stable/2776392](http://www.jstor.org/stable/2776392)
 
-Zagenczyk, Thomas & Murrell, Audrey. (2009). It is Better to Receive than to Give: Advice Network Effects on Job and Work-Unit Attachment. Journal of Business and Psychology. 24. 139-152. 10.1007/s10869-009-9095-3. 
+Hunter, D., Goodreau, S., & Handcock, M. (2005). Goodness of Fit of Social Network Models. https://csss.uw.edu/Papers/wp47.pdf
 
-Traag, V.A., Waltman, L. & van Eck, N.J. From Louvain to Leiden: guaranteeing well-connected communities. Sci Rep 9, 5233 (2019). https://doi.org/10.1038/s41598-019-41695-z
+Raub, W., & Lazega, E. (2001). The collegial phenomenon: The social mechanisms of cooperation among peers in a corporate law partnership. Oxford University Press. https://doi.org/10.1093/esr/jci012
+
+Traag, V. A., Waltman, L., & van Eck, N. J. (2019). From Louvain to Leiden: guaranteeing well-connected communities. Scientific Reports, 9, 5233. https://doi.org/10.1038/s41598-019-41695-z
+
+Zagenczyk, T., & Murrell, A. (2009). It is Better to Receive than to Give: Advice Network Effects on Job and Work-Unit Attachment. Journal of Business and Psychology, 24, 139–152. https://doi.org/10.1007/s10869-009-9095-3
+
